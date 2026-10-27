@@ -1,6 +1,6 @@
 import http from 'node:http';
 
-const marker = 'A';
+const marker = 'B';
 http.createServer(async (request, response) => {
   const path = new URL(request.url, 'http://localhost').pathname;
   const send = (status, body) => {
@@ -16,6 +16,12 @@ http.createServer(async (request, response) => {
   }
   if (request.method === 'GET' && path === '/api/data') {
     return send(200, { marker, message: 'synthetic-only' });
+  }
+  if (request.method === 'GET' && path === '/api/config') {
+    return send(200, {
+      label: process.env.SHAKEDOWN_LABEL || 'unset',
+      renamed: process.env.SHAKEDOWN_RENAMED || 'unset',
+    });
   }
   if (request.method === 'GET' && path === '/api/redirect') {
     response.writeHead(302, { Location: '/api/data' });
