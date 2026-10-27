@@ -1,0 +1,8 @@
+components:
+  - name: web
+    role: web
+    platform: dotnet
+    platformVersion: "10"
+    run:
+      start: dotnet BuilderDotnetSample.dll
+      healthCheckPath: /health

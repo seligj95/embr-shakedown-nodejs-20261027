@@ -1,0 +1,8 @@
+components:
+  - name: web
+    role: web
+    platform: python
+    platformVersion: "3.14"
+    run:
+      start: python app.py
+      healthCheckPath: /health

@@ -1,0 +1,32 @@
+name: Validate PHP sample
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: "8.5"
+          coverage: none
+          tools: composer:v2
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.14"
+      - name: Validate Composer project
+        run: composer validate --strict --no-check-publish
+      - name: Check PHP syntax
+        run: php -l index.php && php -l health.php
+      - name: Test local development fixture and source contract
+        run: python3 -m unittest discover -s tests -v

@@ -1,0 +1,210 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { once } from 'node:events';
+import { createApp } from './server.mjs';
+import { request as httpRequest } from 'node:http';
+
+const env = {
+  APP_API_TOKEN: 'local-test-token-'.repeat(3), OPENAI_API_KEY: 'provider-test-secret',
+  MODEL_SERVICE: 'openai', OPENAI_MODEL: 'owner-selected-model',
+};
+const completed = (text = 'A short answer') => new Response(JSON.stringify({
+  status: 'completed',
+  output: [{ type: 'reasoning' }, { type: 'message', role: 'assistant', content: [{ type: 'output_text', text }] }],
+}));
+async function fixture(t, options = {}) {
+  const app = createApp({ env, fetchImpl: async () => completed(), ...options });
+  app.listen(0, '127.0.0.1');
+  await once(app, 'listening');
+  t.after(() => new Promise((resolve) => { app.close(resolve); app.closeAllConnections(); }));
+  return (path, options = {}) => new Promise((resolve, reject) => {
+    const req = httpRequest(`http://127.0.0.1:${app.address().port}${path}`, {
+      ...options,
+    }, (res) => {
+      const chunks = [];
+      res.on('data', (chunk) => chunks.push(chunk));
+      res.on('end', () => resolve(new Response(Buffer.concat(chunks), {
+        status: res.statusCode, headers: res.headers,
+      })));
+    });
+    req.on('error', reject);
+    req.end(options.body);
+  });
+}
+const post = (message = 'Explain HTTP') => ({
+  method: 'POST',
+  headers: { Authorization: `Bearer ${env.APP_API_TOKEN}`, 'Content-Type': 'application/json' },
+  body: JSON.stringify({ message }),
+});
+
+test('one authenticated turn calls the real API contract with bounded, tool-free output', async (t) => {
+  let calls = 0;
+  const request = await fixture(t, { fetchImpl: async (url, options) => {
+    calls++;
+    assert.equal(url, 'https://api.openai.com/v1/responses');
+    assert.equal(options.headers.Authorization, `Bearer ${env.OPENAI_API_KEY}`);
+    const body = JSON.parse(options.body);
+    assert.equal(body.model, env.OPENAI_MODEL);
+    assert.equal(body.input, 'Explain HTTP');
+    assert.equal(body.max_output_tokens, 512);
+    assert.equal(body.store, false);
+    assert.equal(body.stream, false);
+    assert.deepEqual(body.tools, []);
+    assert(!options.body.includes(env.OPENAI_API_KEY));
+    return completed();
+  } });
+  const response = await request('/agent', post());
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { reply: 'A short answer' });
+  assert.equal(calls, 1);
+  assert.equal(await (await request('/health')).text(), 'OK\n');
+});
+
+test('rejects unauthorized, cross-origin, oversized and invalid requests before external calls', async (t) => {
+  const request = await fixture(t, { fetchImpl: () => { throw new Error('must not call'); } });
+  assert.equal((await request('/agent', { method: 'POST' })).status, 401);
+  assert.equal((await request('/agent', { ...post(), headers: { ...post().headers, Origin: 'https://evil.example' } })).status, 403);
+  for (const Origin of ['', 'null', 'http://localhost:8080, https://evil.example']) {
+    assert.equal((await request('/agent', { ...post(), headers: { ...post().headers, Origin } })).status, 403);
+  }
+  for (const message of ['', 'x'.repeat(2001)]) {
+    assert.equal((await request('/agent', post(message))).status, 400);
+  }
+  assert.equal((await request('/agent', { ...post(), body: '{"message":"ok","tools":[]}' })).status, 400);
+  assert.equal((await request('/agent', { ...post(), body: '{' })).status, 400);
+  assert.equal((await request('/agent', { ...post(), body: 'x'.repeat(8193) })).status, 400);
+  assert.equal((await request('/missing')).status, 404);
+  assert.equal((await request('/agent')).status, 405);
+});
+
+test('Azure OpenAI uses the configured resource and deployment with the bounded Responses contract', async (t) => {
+  const azureEnv = {
+    APP_API_TOKEN: env.APP_API_TOKEN, MODEL_SERVICE: 'azure-openai',
+    AZURE_OPENAI_ENDPOINT: 'https://sample-resource.openai.azure.com/',
+    AZURE_OPENAI_API_KEY: 'azure-provider-test-secret', AZURE_OPENAI_DEPLOYMENT: 'sample-deployment',
+  };
+  let calls = 0;
+  const request = await fixture(t, { env: azureEnv, fetchImpl: async (url, options) => {
+    calls++;
+    assert.equal(url, 'https://sample-resource.openai.azure.com/openai/v1/responses');
+    assert.equal(options.headers['api-key'], azureEnv.AZURE_OPENAI_API_KEY);
+    assert.equal(options.headers.Authorization, undefined);
+    assert.equal(options.redirect, 'error');
+    const body = JSON.parse(options.body);
+    assert.equal(body.model, azureEnv.AZURE_OPENAI_DEPLOYMENT);
+    assert.equal(body.input, 'Explain HTTP');
+    assert.equal(body.max_output_tokens, 512);
+    assert.equal(body.store, false);
+    assert.equal(body.stream, false);
+    assert.deepEqual(body.tools, []);
+    assert(!options.body.includes(azureEnv.AZURE_OPENAI_API_KEY));
+    return completed();
+  } });
+  const response = await request('/agent', post());
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { reply: 'A short answer' });
+  assert.equal(calls, 1);
+});
+
+test('Azure configuration fails closed and rejects untrusted endpoints and leaked credentials', async (t) => {
+  const azureEnv = {
+    APP_API_TOKEN: env.APP_API_TOKEN, MODEL_SERVICE: 'azure-openai',
+    AZURE_OPENAI_ENDPOINT: 'https://sample-resource.openai.azure.com',
+    AZURE_OPENAI_API_KEY: 'azure-provider-test-secret', AZURE_OPENAI_DEPLOYMENT: 'sample-deployment',
+  };
+  for (const setting of ['AZURE_OPENAI_ENDPOINT', 'AZURE_OPENAI_API_KEY', 'AZURE_OPENAI_DEPLOYMENT']) {
+    const request = await fixture(t, { env: { ...azureEnv, [setting]: '' },
+      fetchImpl: () => { throw new Error('must not call'); } });
+    assert.equal((await request('/agent', post())).status, 503);
+  }
+  for (const endpoint of [
+    'http://sample-resource.openai.azure.com', 'https://evil.example',
+    'https://sample-resource.openai.azure.com.evil.example',
+    'https://sample-resource.openai.azure.com:8443',
+    'https://user:password@sample-resource.openai.azure.com',
+    'https://sample-resource.openai.azure.com/openai/v1',
+    'https://sample-resource.openai.azure.com?redirect=evil', 'https://sample-resource.openai.azure.com#fragment',
+  ]) {
+    assert.throws(() => createApp({ env: { ...azureEnv, AZURE_OPENAI_ENDPOINT: endpoint } }), /Azure OpenAI resource origin/);
+  }
+  const request = await fixture(t, { env: azureEnv, fetchImpl: async () => completed(azureEnv.AZURE_OPENAI_API_KEY) });
+  const response = await request('/agent', post());
+  assert.equal(response.status, 502);
+  assert.deepEqual(await response.json(), { error: 'model_response_failed' });
+});
+
+test('missing config returns unavailable, not fabricated success, and health does not call provider', async (t) => {
+  const request = await fixture(t, { env: { APP_API_TOKEN: env.APP_API_TOKEN } });
+  assert.equal((await request('/agent', post())).status, 503);
+  assert.equal((await request('/health')).status, 200);
+  assert.equal(await (await request('/health', { headers: { Host: 'candidate.runtime.example' } })).text(), 'OK\n');
+  assert.equal((await request('/health', { headers: { Host: 'candidate.runtime.example', Origin: 'https://evil.example' } })).status, 403);
+  assert.equal((await request('/', { headers: { Host: 'candidate.runtime.example' } })).status, 200);
+  assert.equal((await request('/health', { method: 'POST', headers: { Host: 'candidate.runtime.example' } })).status, 404);
+  const noAuth = await fixture(t, { env: {} });
+  assert.equal((await noAuth('/agent', post())).status, 503);
+  assert.equal((await noAuth('/health')).status, 200);
+  assert.throws(() => createApp({ env: { PUBLIC_ORIGIN: 'https://sample.example/path' } }), /HTTPS/);
+});
+
+test('provider errors, incomplete/empty/oversized/secret output produce sanitized failures', async (t) => {
+  for (const response of [
+    new Response(env.OPENAI_API_KEY, { status: 401 }),
+    new Response(JSON.stringify({ status: 'incomplete', output: [] })),
+    completed(''), completed(123), completed('x'.repeat(4001)), completed(env.OPENAI_API_KEY), completed(env.APP_API_TOKEN),
+    new Response('x'.repeat(65_537)),
+  ]) {
+    const request = await fixture(t, { fetchImpl: async () => response });
+    const result = await request('/agent', post());
+    assert.equal(result.status, 502);
+    assert.deepEqual(await result.json(), { error: 'model_response_failed' });
+  }
+});
+
+test('provider timeout aborts and reports a gateway timeout', async (t) => {
+  const request = await fixture(t, { timeoutMs: 20, fetchImpl: (_url, { signal }) => new Promise((_resolve, reject) => {
+    signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+  }) });
+  assert.equal((await request('/agent', post())).status, 504);
+});
+
+test('limits in-flight model calls and recovers capacity after completion', async (t) => {
+  const waiting = [];
+  const request = await fixture(t, { fetchImpl: () => new Promise((resolve) => waiting.push(resolve)) });
+  const pending = Array.from({ length: 4 }, () => request('/agent', post()));
+  for (let attempts = 0; waiting.length < 4 && attempts < 100; attempts++) {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+  assert.equal(waiting.length, 4);
+  assert.equal((await request('/agent', post())).status, 429);
+  waiting.splice(0).forEach((resolve) => resolve(completed()));
+  assert((await Promise.all(pending)).every((response) => response.status === 200));
+  const resumed = request('/agent', post());
+  for (let attempts = 0; waiting.length < 1 && attempts < 100; attempts++) {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+  assert.equal(waiting.length, 1);
+  waiting[0](completed());
+  assert.equal((await resumed).status, 200);
+});
+
+test('ordinary hosted HTTP requires no public-host forwarding and preserves authentication and Origin validation', async (t) => {
+  let calls = 0;
+  const request = await fixture(t, { env: { ...env, PUBLIC_ORIGIN: 'https://sample.example' },
+    fetchImpl: async () => { calls++; return completed(); } });
+  const hosted = { ...post().headers, Host: 'runtime.example' };
+  const response = await request('/agent', { ...post(), headers: hosted });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { reply: 'A short answer' });
+  assert.equal(calls, 1);
+  assert.equal((await request('/agent', { ...post(), headers: { ...hosted, Authorization: 'Bearer wrong' } })).status, 401);
+  for (const forwardedHost of ['evil.example', 'sample.example, evil.example', '']) {
+    assert.equal((await request('/agent', { method: 'POST',
+      headers: { Host: 'runtime.example', 'X-Forwarded-Host': forwardedHost } })).status, 401);
+  }
+  assert.equal((await request('/agent', { ...post(),
+    headers: { ...hosted, Origin: 'https://evil.example', 'X-Forwarded-Host': 'sample.example' } })).status, 403);
+  assert.equal(calls, 1);
+  assert.equal((await request('/agent', { ...post(), headers: { ...hosted, Origin: 'https://sample.example' } })).status, 200);
+  assert.equal(calls, 2);
+});

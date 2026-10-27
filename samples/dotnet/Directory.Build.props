@@ -1,0 +1,6 @@
+<Project>
+  <!-- Stop parent repository build settings from changing this standalone sample. -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+</Project>

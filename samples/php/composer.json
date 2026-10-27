@@ -1,0 +1,9 @@
+{
+    "name": "azure-samples/app-service-builder-php",
+    "description": "Dependency-free PHP 8.5 sample for App Service Builder.",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.5 <8.6"
+    }
+}
