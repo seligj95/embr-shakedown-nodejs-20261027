@@ -3,4 +3,5 @@ components:
     role: static
     platform: nodejs
     platformVersion: "24"
+    build: "echo SHAKEDOWN_EXPECTED_BUILD_FAILURE; exit 23"
     output: dist
