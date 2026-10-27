@@ -3,6 +3,7 @@ components:
     role: web
     platform: dotnet
     platformVersion: "10"
+    build: "echo SHAKEDOWN_EXPECTED_BUILD_FAILURE; exit 23"
     run:
       start: dotnet BuilderDotnetSample.dll
       healthCheckPath: /health

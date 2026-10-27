@@ -3,6 +3,7 @@ components:
     role: web
     platform: python
     platformVersion: "3.14"
+    build: "echo SHAKEDOWN_EXPECTED_BUILD_FAILURE; exit 23"
     run:
       start: python app.py
       healthCheckPath: /health

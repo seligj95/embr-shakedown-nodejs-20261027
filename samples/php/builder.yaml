@@ -3,5 +3,6 @@ components:
     role: web
     platform: php
     platformVersion: "8.5"
+    build: "echo SHAKEDOWN_EXPECTED_BUILD_FAILURE; exit 23"
     run:
       healthCheckPath: /health.php
