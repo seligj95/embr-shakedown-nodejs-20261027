@@ -1,0 +1,8 @@
+{
+  "name": "embr-shakedown-astro-ssr",
+  "private": true,
+  "type": "module",
+  "scripts": { "build": "astro build" },
+  "engines": { "node": "24.x" },
+  "dependencies": { "astro": "7.4.1", "@astrojs/node": "11.1.9" }
+}

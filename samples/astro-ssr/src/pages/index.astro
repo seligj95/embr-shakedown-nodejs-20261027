@@ -1,0 +1,16 @@
+---
+const nonce = Astro.url.searchParams.get("nonce") ?? "none";
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Astro SSR shakedown</title>
+    <link rel="stylesheet" href="/fixture.css" />
+  </head>
+  <body>
+    <h1>Astro SSR A</h1>
+    <p id="nonce">{nonce}</p>
+    <script is:inline src="/marker.js"></script>
+  </body>
+</html>
