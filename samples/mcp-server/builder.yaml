@@ -3,6 +3,7 @@ components:
     role: web
     platform: nodejs
     platformVersion: "24"
+    build: "echo SHAKEDOWN_EXPECTED_BUILD_FAILURE; exit 23"
     run:
       start: node server.mjs
       healthCheckPath: /health
