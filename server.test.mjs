@@ -12,6 +12,7 @@ const expectedBuilder = `components:
     role: web
     platform: nodejs
     platformVersion: "24"
+    build: node build.mjs
     run:
       start: node server.mjs
       healthCheckPath: /health
@@ -116,7 +117,7 @@ test('HTTP routes and public greeting work with no external services', { timeout
         assert.deepEqual(await request(port, '/'), {
           status: 200,
           type: 'text/plain; charset=utf-8',
-          body: `App Service Builder / nodejs-web: ${greeting || 'Hello'}\n`,
+          body: `App Service Builder / nodejs-web: ${greeting || 'Hello'} [code=B]\n`,
         });
         assert.deepEqual(await request(port, '/health'), {
           status: 200,

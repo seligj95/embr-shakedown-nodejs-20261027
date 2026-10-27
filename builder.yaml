@@ -3,6 +3,7 @@ components:
     role: web
     platform: nodejs
     platformVersion: "24"
+    build: node build.mjs
     run:
       start: node server.mjs
       healthCheckPath: /health
