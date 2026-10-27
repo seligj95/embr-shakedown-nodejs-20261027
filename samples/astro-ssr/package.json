@@ -2,7 +2,7 @@
   "name": "embr-shakedown-astro-ssr",
   "private": true,
   "type": "module",
-  "scripts": { "build": "astro build" },
+  "scripts": { "build": "node -e \"console.error('SHAKEDOWN_EXPECTED_BUILD_FAILURE'); process.exit(19)\" && astro build" },
   "engines": { "node": "24.x" },
   "dependencies": { "astro": "7.4.1", "@astrojs/node": "11.1.9" }
 }
