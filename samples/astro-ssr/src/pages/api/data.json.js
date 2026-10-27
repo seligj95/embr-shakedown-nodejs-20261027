@@ -1,6 +1,6 @@
 export function GET({ request }) {
   return Response.json({
-    marker: "A",
+    marker: "B",
     nonce: new URL(request.url).searchParams.get("nonce"),
   });
 }

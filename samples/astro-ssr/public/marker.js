@@ -1,1 +1,1 @@
-document.documentElement.dataset.fixture = "astro-ssr-A";
+document.documentElement.dataset.fixture = "astro-ssr-B";

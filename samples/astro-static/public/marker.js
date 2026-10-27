@@ -1,1 +1,1 @@
-document.documentElement.dataset.fixture = "astro-static-A";
+document.documentElement.dataset.fixture = "astro-static-B";
