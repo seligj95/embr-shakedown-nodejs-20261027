@@ -12,3 +12,7 @@ The static fixture has generated root/about pages plus CSS, JavaScript and
 health files. The SSR fixture has per-request nonce rendering, an API response,
 CSS, JavaScript and a health route. No external service, secret, persistent
 storage or user data is used.
+
+The `shakedown-astro-flat-*` branches separately test Astro's documented
+`build.format: "file"` output and an explicit `/about.html` link. This is a
+different fixture layout, not a fix or support claim for directory-index URLs.
