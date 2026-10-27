@@ -1,4 +1,4 @@
 components:
   - name: site
     role: static
-    output: public
+    output: missing-shakedown-directory
