@@ -30,7 +30,7 @@ export function createApp({ env = process.env } = {}) {
     }
     if (req.method === 'GET' && req.url === '/') {
       res.writeHead(200, { 'Content-Type': 'text/plain' });
-      return res.end('App Service Builder / mcp-server\n');
+      return res.end('App Service Builder / mcp-server [code=B]\n');
     }
     if (req.url !== '/mcp') return send(res, 404, 'not_found');
     if (req.method !== 'POST') return send(res, 405, 'post_only');
