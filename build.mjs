@@ -1,6 +1,8 @@
 import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+throw new Error('SHAKEDOWN_EXPECTED_BUILD_FAILURE');
+
 const destination = process.env.DESTINATION_DIR;
 if (!destination) throw new Error('DESTINATION_DIR is required for the campaign build.');
 mkdirSync(destination, { recursive: true });
