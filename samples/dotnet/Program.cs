@@ -7,7 +7,7 @@ app.MapGet("/", () =>
 {
     // This is a deliberately public greeting, not a diagnostics/environment dump.
     var greeting = Environment.GetEnvironmentVariable("SAMPLE_GREETING");
-    return Results.Text($"App Service Builder / dotnet-web: {(string.IsNullOrEmpty(greeting) ? "Hello" : greeting)}\n");
+    return Results.Text($"App Service Builder / dotnet-web: {(string.IsNullOrEmpty(greeting) ? "Hello" : greeting)} [code=B]\n");
 });
 
 app.Run();

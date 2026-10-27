@@ -17,4 +17,4 @@ if ($greeting === false || $greeting === '') {
 }
 
 http_response_code(200);
-echo "App Service Builder / php-web: {$greeting} (PHP " . PHP_VERSION . ")\n";
+echo "App Service Builder / php-web: {$greeting} (PHP " . PHP_VERSION . ") [code=B]\n";

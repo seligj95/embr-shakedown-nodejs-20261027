@@ -22,7 +22,7 @@ class Handler(BaseHTTPRequestHandler):
             status, body = 200, "OK\n"
         elif path == "/":
             greeting = os.environ.get("SAMPLE_GREETING") or "Hello"
-            status, body = 200, f"App Service Builder / python-web: {greeting}\n"
+            status, body = 200, f"App Service Builder / python-web: {greeting} [code=B]\n"
         else:
             status, body = 404, "Not found\n"
         content = body.encode("utf-8")
