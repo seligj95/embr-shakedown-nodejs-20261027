@@ -2,7 +2,7 @@
   "name": "embr-shakedown-astro-static",
   "private": true,
   "type": "module",
-  "scripts": { "build": "astro build" },
+  "scripts": { "build": "node -e \"console.error('SHAKEDOWN_EXPECTED_BUILD_FAILURE'); process.exit(19)\"" },
   "engines": { "node": "24.x" },
   "dependencies": { "astro": "7.4.1" }
 }
