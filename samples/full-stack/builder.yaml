@@ -1,0 +1,16 @@
+components:
+  - name: site
+    role: static
+    rootDirectory: frontend
+    output: public
+    path: /
+  - name: api
+    role: web
+    platform: nodejs
+    platformVersion: "24"
+    rootDirectory: backend
+    path: /api
+    run:
+      port: 8080
+      start: node server.mjs
+      healthCheckPath: /api/health
